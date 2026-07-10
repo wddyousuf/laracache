@@ -35,7 +35,7 @@ use Wddyousuf\AutoCache\Query\CachedQueryBuilder;
  *   protected $cacheMaxRows  = 5000;          // skip caching larger results
  *   protected $flushRelated  = ['comments'];  // relations/models to co-flush
  *
- * @method static \Wddyousuf\AutoCache\Query\CachedBuilder query()
+ * @method static \Wddyousuf\AutoCache\Query\CachedBuilder<static> query()
  *
  * @phpstan-require-extends Model
  */
@@ -54,6 +54,9 @@ trait Cacheable
 
     /**
      * Use our cache-aware Eloquent builder for this model.
+     *
+     * @param  QueryBuilder  $query
+     * @return CachedBuilder<static>
      */
     public function newEloquentBuilder($query): CachedBuilder
     {
@@ -76,6 +79,8 @@ trait Cacheable
 
     /**
      * Start a query with caching disabled: Post::withoutCache()->get().
+     *
+     * @return CachedBuilder<static>
      */
     public static function withoutCache(): CachedBuilder
     {
@@ -84,6 +89,8 @@ trait Cacheable
 
     /**
      * Start a query with a per-query TTL: Post::cacheFor(60)->get().
+     *
+     * @return CachedBuilder<static>
      */
     public static function cacheFor(?int $ttl): CachedBuilder
     {
@@ -93,6 +100,8 @@ trait Cacheable
     /**
      * Explicitly opt a query into caching (for the opt-in mode):
      * Post::cache()->where(...)->get().
+     *
+     * @return CachedBuilder<static>
      */
     public static function cache(): CachedBuilder
     {

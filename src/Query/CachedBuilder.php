@@ -12,6 +12,14 @@ use Wddyousuf\AutoCache\Contracts\Cacheable;
  * underlying {@see CachedQueryBuilder} (keeping the chain returning an Eloquent
  * builder so results stay hydrated as models) and to apply row-level caching
  * for canonical primary-key lookups via find().
+ *
+ * The generic parameter mirrors Eloquent\Builder's own. Without it, static
+ * analysers widen every query on a Cacheable model back to a bare Model, so
+ * `Post::query()->first()` resolves to Model instead of Post.
+ *
+ * @template TModelClass of Model
+ *
+ * @extends Builder<TModelClass>
  */
 class CachedBuilder extends Builder
 {
