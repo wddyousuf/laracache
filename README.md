@@ -205,6 +205,32 @@ class Comment extends Model
 
 Creating or updating a `Comment` now also flushes the cached `Post` queries.
 
+### Many-to-many (pivot) writes
+
+`$flushRelated` covers `belongsTo` / `hasMany`, but a **many-to-many** write —
+`$post->tags()->sync()`, `->attach()`, `->detach()` — is a bare pivot statement
+that never touches a cacheable model's builder, so a cached relation read
+(`$post->tags`, or any query that joins the pivot) keeps serving stale rows until
+its TTL expires. When the pivot gates authorization, that is unsafe.
+
+Map each pivot table to the cacheable models whose reads it can change:
+
+```php
+// config/autocache.php
+'pivot_invalidation' => [
+    'map' => [
+        'post_tag'  => [App\Models\Post::class, App\Models\Tag::class],
+        'role_user' => [App\Models\Role::class, App\Models\User::class],
+    ],
+],
+```
+
+AutoCache then watches the query stream and flushes those models on any write to
+a listed pivot — wherever it originates (Eloquent, a Filament relation manager,
+or raw SQL). List both sides that are cacheable; a non-cacheable class in the map
+is skipped. The listener is only registered when the map is non-empty, so there
+is no query-stream overhead if you don't use the feature.
+
 ## Stale-while-revalidate
 
 On Laravel 11+, serve an expired value instantly while it recomputes in the
@@ -352,6 +378,11 @@ Nothing to configure.
   queries (which must also use `Cacheable`). A change to a related model does
   not flush a parent's *root* query unless you wire it up with `$flushRelated`.
 - **`cursor()`** streams and is intentionally never cached.
+- **Tag mode flushes the whole model on every write.** With a taggable store
+  (redis, memcached), any write clears the model's entire tag; the surgical
+  single-row flush only applies to the version-counter path (`row_cache`, on
+  non-taggable stores). Prefer caching read-heavy / write-light models in tag
+  mode — a model written on nearly every request gains little.
 - **Direct `DB::table()` writes** bypass Eloquent entirely; call
   `AutoCache::flush(Model::class)` afterward if you use them.
 - The **version counter** on non-atomic stores (`file`) can, under heavy

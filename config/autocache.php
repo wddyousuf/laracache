@@ -181,4 +181,33 @@ return [
         // App\Models\Post::class,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Pivot / Many-to-Many Invalidation
+    |--------------------------------------------------------------------------
+    |
+    | AutoCache only invalidates from writes issued through a cacheable model's
+    | own query builder. Many-to-many writes — $post->tags()->sync()/attach()/
+    | detach() — are bare pivot statements that carry no model, so a cached
+    | relation query (`$post->tags`, or a query joining the pivot) keeps serving
+    | stale rows until its TTL expires. This is easy to miss and, when the pivot
+    | gates authorization, unsafe.
+    |
+    | Map each pivot table to the cacheable models whose reads it can change —
+    | typically both sides of the relation (whichever are cacheable). When the
+    | map is non-empty, AutoCache watches the query stream and flushes those
+    | models on any write to a listed pivot, wherever the write originates.
+    |
+    */
+
+    'pivot_invalidation' => [
+
+        'enabled' => env('AUTOCACHE_PIVOT_INVALIDATION', true),
+
+        'map' => [
+            // 'post_tag' => [App\Models\Post::class, App\Models\Tag::class],
+        ],
+
+    ],
+
 ];

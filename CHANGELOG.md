@@ -3,7 +3,21 @@
 All notable changes to `wddyousuf/eloquent-autocache` will be documented in
 this file.
 
-## 0.2.2 - 2026-07-15
+## 0.2.3 - 2026-07-17
+
+### Added
+- **Many-to-many (pivot) invalidation.** A many-to-many write
+  (`$post->tags()->sync()`/`->attach()`/`->detach()`) is a bare pivot statement
+  that never reaches a cacheable model's builder, so cached relation reads went
+  stale until TTL — unsafe when the pivot gates authorization. Configure
+  `autocache.pivot_invalidation.map` (`pivot table => [cacheable models]`) and
+  AutoCache watches the query stream, flushing those models on any write to a
+  listed pivot, wherever it originates. Opt-in: the listener is only registered
+  when the map is non-empty, so there is zero query-stream overhead otherwise.
+
+### Documentation
+- README documents pivot invalidation, and notes that tag mode flushes the whole
+  model per write (surgical single-row flush is version-counter mode only).
 
 ### Fixed
 - Laravel 13 compatibility with the new secure-by-default

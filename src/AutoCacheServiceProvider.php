@@ -2,11 +2,13 @@
 
 namespace Wddyousuf\AutoCache;
 
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\ServiceProvider;
 use Wddyousuf\AutoCache\Console\ClearCommand;
 use Wddyousuf\AutoCache\Console\FlushCommand;
 use Wddyousuf\AutoCache\Console\StatsCommand;
 use Wddyousuf\AutoCache\Console\WarmCommand;
+use Wddyousuf\AutoCache\Listeners\FlushCacheOnPivotWrite;
 
 class AutoCacheServiceProvider extends ServiceProvider
 {
@@ -27,6 +29,7 @@ class AutoCacheServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerOctaneListeners();
+        $this->registerPivotInvalidation();
 
         if ($this->app->runningInConsole()) {
             $this->publishes([
@@ -46,6 +49,28 @@ class AutoCacheServiceProvider extends ServiceProvider
      * Reset process-static state at the start of each Octane request/task/tick
      * so a long-lived worker never carries flush state between requests.
      */
+    /**
+     * Watch the query stream for writes to configured pivot tables and flush
+     * the cacheable models whose reads depend on them. Only registered when a
+     * pivot map is configured, so there is zero query-stream overhead otherwise.
+     */
+    protected function registerPivotInvalidation(): void
+    {
+        if (! config('autocache.enabled', true)) {
+            return;
+        }
+
+        if (! config('autocache.pivot_invalidation.enabled', true)) {
+            return;
+        }
+
+        if (empty(config('autocache.pivot_invalidation.map', []))) {
+            return;
+        }
+
+        $this->app['events']->listen(QueryExecuted::class, FlushCacheOnPivotWrite::class);
+    }
+
     protected function registerOctaneListeners(): void
     {
         // String class names (not ::class) so static analysis doesn't require
